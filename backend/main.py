@@ -1,20 +1,34 @@
-from fastapi import FastAPI
+import sys
+import os
 
-from db.database import init_db
-from routers.predict import router as predict_router
-from routers.predict import predictor
+sys.path.append(os.path.abspath("../ml"))
 
-app = FastAPI(title="AnomAlert Bio Backend", version="0.1.0")
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from predict import predict
 
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    await init_db()
+app = FastAPI(title="AnomAlert Bio API")
 
 
-@app.get("/health")
-async def health_check() -> dict:
-    return {"status": "ok", "model_loaded": predictor.model_loaded}
+class BatchInput(BaseModel):
+    pH_mean: float
+    temp_max: float
+    oxygen_variance: float
+    ts_mean: float
+    ts_std: float
+    ts_max: float
+    ts_min: float
 
 
-app.include_router(predict_router)
+@app.get("/")
+def root():
+    return {"message": "API working"}
+
+
+@app.post("/predict")
+def predict_batch(input: BatchInput):
+    try:
+        result = predict(input.dict())
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
