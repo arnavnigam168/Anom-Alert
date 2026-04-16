@@ -1,0 +1,34 @@
+{
+  "accuracy": 0.8722222222222222,
+  "f1_macro": 0.5302855242196663,
+  "feature_importance_shap": [
+    {
+      "feature": "oxygen_variance",
+      "importance": 0.3078478601476589
+    },
+    {
+      "feature": "ts_std",
+      "importance": 0.16809281010718205
+    },
+    {
+      "feature": "temp_max",
+      "importance": 0.14053895882223677
+    },
+    {
+      "feature": "pH_mean",
+      "importance": 0.11899257880914386
+    },
+    {
+      "feature": "ts_min",
+      "importance": 0.09301672646545547
+    },
+    {
+      "feature": "ts_mean",
+      "importance": 0.09220823842262459
+    },
+    {
+      "feature": "ts_max",
+      "importance": 0.07930282722569837
+    }
+  ]
+}
