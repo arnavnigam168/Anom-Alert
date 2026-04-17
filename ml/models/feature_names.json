@@ -1,0 +1,13 @@
+[
+  "pH_mean",
+  "temp_max",
+  "oxygen_variance",
+  "ts_mean",
+  "ts_std",
+  "ts_max",
+  "ts_min",
+  "ts_slope",
+  "ts_max_jump",
+  "ts_rolling_var_mean",
+  "ts_spike_count"
+]

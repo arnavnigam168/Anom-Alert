@@ -1,34 +1,53 @@
 {
-  "accuracy": 0.8722222222222222,
-  "f1_macro": 0.5302855242196663,
+  "model_name": "RandomForest",
+  "accuracy": 0.9375,
+  "f1_macro": 0.9375923906069876,
+  "cv_f1_macro_mean": 0.9471030284947629,
+  "label_distribution": {
+    "PASS": 800,
+    "FAIL": 800,
+    "REVIEW": 800
+  },
   "feature_importance_shap": [
     {
-      "feature": "oxygen_variance",
-      "importance": 0.3078478601476589
+      "feature": "ts_std",
+      "importance": 0.24577232583153474
     },
     {
-      "feature": "ts_std",
-      "importance": 0.16809281010718205
+      "feature": "ts_rolling_var_mean",
+      "importance": 0.1868956277270224
+    },
+    {
+      "feature": "oxygen_variance",
+      "importance": 0.18343748818022682
+    },
+    {
+      "feature": "ts_max_jump",
+      "importance": 0.1316326117187322
     },
     {
       "feature": "temp_max",
-      "importance": 0.14053895882223677
+      "importance": 0.09282638608736771
     },
     {
-      "feature": "pH_mean",
-      "importance": 0.11899257880914386
-    },
-    {
-      "feature": "ts_min",
-      "importance": 0.09301672646545547
-    },
-    {
-      "feature": "ts_mean",
-      "importance": 0.09220823842262459
+      "feature": "ts_spike_count",
+      "importance": 0.06420212102139507
     },
     {
       "feature": "ts_max",
-      "importance": 0.07930282722569837
+      "importance": 0.028152493663674973
+    },
+    {
+      "feature": "ts_min",
+      "importance": 0.026498295218476246
+    },
+    {
+      "feature": "pH_mean",
+      "importance": 0.019989920155079673
+    },
+    {
+      "feature": "ts_mean",
+      "importance": 0.01324582841308107
     }
   ]
 }
