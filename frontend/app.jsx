@@ -409,7 +409,7 @@ function AppShell() {
     const timestamp = formatTimestamp()
 
     try {
-      const response = await fetch('https://anom-alert.onrender.com', {
+      const response = await fetch('https://anom-alert.onrender.com/predict', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(inputValues)
