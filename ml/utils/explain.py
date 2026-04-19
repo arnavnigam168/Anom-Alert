@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import logging
 from typing import Dict, List, Tuple
 
 import numpy as np
+
+from config import LABEL_TO_NAME
+
+logger = logging.getLogger(__name__)
 
 
 def _safe_get_shap():
@@ -41,18 +46,25 @@ def top_contributing_features(
     if shap is None:
         return _top_features_from_importances(model, x_scaled, feature_names, top_k=top_k)
 
-    explainer = shap.TreeExplainer(model)
-    shap_values = explainer.shap_values(x_scaled)
+    try:
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(x_scaled)
+    except Exception as exc:
+        logger.warning("SHAP TreeExplainer failed (%s); using feature importance fallback.", exc)
+        return _top_features_from_importances(model, x_scaled, feature_names, top_k=top_k)
 
     # Multiclass SHAP is commonly a list[class] -> [sample, features]
     if isinstance(shap_values, list):
         class_idx = int(predicted_label_int)
+        if class_idx < 0 or class_idx >= len(shap_values):
+            class_idx = int(np.clip(class_idx, 0, len(shap_values) - 1))
         contrib = np.abs(shap_values[class_idx][0])
     else:
         values = np.array(shap_values)
         # Handle shapes like (n_samples, n_features) or (n_classes, n_samples, n_features)
         if values.ndim == 3:
             class_idx = int(predicted_label_int)
+            class_idx = int(np.clip(class_idx, 0, values.shape[0] - 1))
             contrib = np.abs(values[class_idx, 0, :])
         else:
             contrib = np.abs(values[0])
@@ -100,7 +112,7 @@ def predict_top_features_and_explanation(
     predicted_label_int: int,
     top_k: int = 3,
 ) -> Tuple[List[str], str]:
-    predicted_label = {0: "PASS", 1: "FAIL", 2: "REVIEW"}[int(predicted_label_int)]
+    predicted_label = LABEL_TO_NAME.get(int(predicted_label_int), "REVIEW")
 
     top_features = top_contributing_features(
         model=model,

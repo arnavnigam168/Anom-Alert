@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import json
+import logging
+from pathlib import Path
 from typing import Dict, Iterable, List, Tuple, Union
 
 import joblib
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
+
+logger = logging.getLogger(__name__)
 
 from config import (
     FEATURE_NAMES,
@@ -184,7 +188,61 @@ def load_feature_names(path: str = str(FEATURE_NAMES_PATH)) -> List[str]:
 
 
 def load_scaler(path: str = str(SCALER_PATH)) -> StandardScaler:
-    return joblib.load(path)
+    scaler_path = Path(path)
+    if not scaler_path.is_file():
+        raise FileNotFoundError(f"Scaler artifact not found: {scaler_path}")
+    obj = joblib.load(scaler_path)
+    if not hasattr(obj, "transform"):
+        raise TypeError(f"Expected a fitted scaler with transform(); got {type(obj).__name__}")
+    return obj
+
+
+def transform_input(
+    payload: Union[Dict[str, float], Iterable[float], pd.DataFrame],
+    feature_names: List[str],
+    scaler: StandardScaler,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Align raw input to training feature order, fill missing columns with 0, drop extras,
+    then apply the training scaler.
+
+    Returns:
+        x_scaled: shape (1, n_features)
+        x_unscaled: shape (n_features,) float64
+    """
+    names = list(feature_names)
+    if not names:
+        raise ValueError("feature_names is empty; cannot transform input.")
+
+    if isinstance(payload, pd.DataFrame):
+        if payload.shape[0] != 1:
+            raise ValueError(f"Expected a single-row DataFrame; got {payload.shape[0]} rows.")
+        frame = payload.reindex(columns=names, fill_value=0.0)
+    elif isinstance(payload, dict):
+        frame = pd.DataFrame([payload]).reindex(columns=names, fill_value=0.0)
+    else:
+        values = [float(v) for v in list(payload)]
+        if len(values) != len(names):
+            raise ValueError(f"Expected {len(names)} values in iterable payload, got {len(values)}.")
+        frame = pd.DataFrame([values], columns=names)
+
+    x_unscaled_2d = frame.to_numpy(dtype=np.float64)
+    if np.isnan(x_unscaled_2d).any():
+        bad = [names[i] for i in np.where(np.isnan(x_unscaled_2d[0]))[0].tolist()]
+        raise ValueError(f"Input contains NaN after alignment (features: {bad}).")
+
+    try:
+        x_scaled = scaler.transform(x_unscaled_2d)
+    except Exception as exc:
+        logger.exception("Scaler transform failed")
+        raise ValueError(f"Scaler transform failed: {exc}") from exc
+
+    if np.isnan(x_scaled).any():
+        raise ValueError("Scaled features contain NaN; check scaler parameters and input.")
+
+    x_unscaled = x_unscaled_2d.reshape(-1)
+    logger.debug("transform_input: x_unscaled shape=%s x_scaled shape=%s", x_unscaled.shape, x_scaled.shape)
+    return x_scaled, x_unscaled
 
 
 def ensure_synthetic_data(
