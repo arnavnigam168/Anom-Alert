@@ -96,7 +96,18 @@ def _extract_prediction_and_confidence(model, x_scaled: np.ndarray) -> tuple[int
     classes = getattr(model, "classes_", None)
     n_classes = int(len(classes)) if classes is not None else -1
 
+    # If the model reports a single class, try to use predict_proba safely
     if classes is not None and n_classes <= 1:
+        try:
+            raw_proba = model.predict_proba(x_scaled)
+            one_row = _normalize_proba_row(raw_proba)
+            if one_row is not None and one_row.size >= 1:
+                # Use the single probability value as confidence, and assign label 0
+                val = float(np.nan_to_num(one_row[0], nan=0.0, posinf=1.0, neginf=0.0))
+                return 0, float(np.clip(val, 0.0, 1.0)), one_row.tolist()
+        except Exception:
+            # fall back to predict-only
+            pass
         return _from_predict_only(model, x_scaled)
 
     try:
@@ -112,7 +123,7 @@ def _extract_prediction_and_confidence(model, x_scaled: np.ndarray) -> tuple[int
     if one_row.size == 1:
         return _from_predict_only(model, x_scaled)
 
-    if classes is not None and n_classes > 0 and one_row.size != n_classes:
+    if classes is not None and one_row.size != n_classes:
         logger.warning(
             "predict_proba length %s does not match classes_ length %s; using predict().",
             one_row.size,
@@ -191,11 +202,12 @@ def _brief_explanation(
 
 
 def _fail_safe_response(message: str) -> Dict[str, object]:
+    # Always return a stable, non-500 fallback response for the API
     return {
-        "prediction": "ERROR",
-        "confidence": 0.0,
+        "prediction": "FAIL",
+        "confidence": 0.5,
         "top_features": [],
-        "explanation": message,
+        "explanation": "Fallback used",
     }
 
 
@@ -251,12 +263,9 @@ def predict(payload: Union[Dict[str, float], Iterable[float]]) -> Dict[str, obje
 
         if predicted_label_int not in LABEL_TO_NAME:
             logger.warning(
-                "Predicted label %s not in LABEL_TO_NAME; mapping to REVIEW.",
-                predicted_label_int,
+                "Predicted label %s not in LABEL_TO_NAME; mapping to REVIEW.", predicted_label_int
             )
-            predicted_label_int = 2
-
-        prediction_name = LABEL_TO_NAME[predicted_label_int]
+        prediction_name = LABEL_TO_NAME.get(predicted_label_int, "REVIEW")
         top_features = _safe_top_features(_MODEL, x_scaled, _FEATURE_NAMES, top_k=3)
         explanation = _brief_explanation(
             prediction_name, top_features, _FEATURE_NAMES, x_unscaled
